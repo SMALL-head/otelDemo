@@ -1,0 +1,73 @@
+version: '3'
+services:
+  # otel-collector:
+  #   image: otel/opentelemetry-collector-contrib
+  #   volumes:
+  #     - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
+  #   ports:
+  #     - 1888:1888 # pprof扩展
+  #     - 8888:8888 # Collector公开的Prometheus指标
+  #     - 8889:8889 # Prometheus导出器指标
+  #     - 13133:13133 # health_check扩展
+  #     - 4317:4317 # OTLP gRPC接收器
+  #     - 4318:4318 # OTLP http接收器
+  #     - 55679:55679 # zpages扩展
+#  jaeger:
+#    image: jaegertracing/all-in-one:1.64.0
+#    ports:
+#      - "5775:5775/udp"
+#      - "6831:6831/udp"
+#      - "6832:6832/udp"
+#      - "5778:5778"
+#      - "16686:16686"
+#      - "14268:14268"
+#      - "14250:14250"
+#      - "9411:9411"
+#      - "4317:4317"
+#      - "4318:4318"
+#    environment:
+#      - COLLECTOR_ZIPKIN_HTTP_PORT=:9411
+  grafana-tempo:
+    image: grafana/tempo:main-06487cc
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    volumes:
+      - ./config/tempo.yaml:/etc/tempo.yaml
+    ports:
+      - "14268"  # jaeger ingest, Jaeger - Thrift HTTP
+      - "14250"  # Jaeger - GRPC
+      - "55680:55680"  # OpenTelemetry
+      - "4317" # grpc
+      - "4318:4318" # http
+      - "3200:3200"   # tempo
+  grafana:
+    image: grafana/grafana:11.4.0
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./config/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - tempo-query
+
+  tempo-query:
+    image: grafana/tempo-query:main-82de08f-arm64
+    command: [ "-config=/etc/tempo-query.yaml" ]
+    volumes:
+      - ./config/tempo-query.yaml:/etc/tempo-query.yaml
+    ports:
+      - "16686:16686"  # jaeger-ui
+    depends_on:
+      - grafana-tempo
+
+#  otel-collector:
+#    image: otel/opentelemetry-collector:0.115.1
+#    command: [ "--config=/etc/otel-collector.yaml" ]
+#    volumes:
+#      - ./config/otel-collector.yaml:/etc/otel-collector.yaml
+#    ports:
+#      - '4318:4318' # 开启http
+#    depends_on:
+#      - grafana-tempo
