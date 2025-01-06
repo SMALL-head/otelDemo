@@ -1,4 +1,5 @@
 auth_enabled: false
+stream_over_http_enabled: true
 
 server:
   http_listen_port: 3200
@@ -32,6 +33,19 @@ compactor:
     block_retention: 1h
     compacted_block_retention: 10m
 
+metrics_generator:
+  storage:
+    path: /var/tempo/generator/wal
+    remote_write:
+      - url: http://prometheus:9090/api/v1/write
+        send_exemplars: true
+  traces_storage:
+    path: /var/tempo/generator/traces
+  processor:
+    local_blocks:
+      filter_server_spans: false
+      flush_to_storage: true
+
 storage:
   trace:
     backend: local                     # backend configuration to use
@@ -44,3 +58,9 @@ storage:
     pool:
       max_workers: 100                 # the worker pool mainly drives querying, but is also used for polling the blocklist
       queue_depth: 10000
+
+overrides:
+  defaults:
+    metrics_generator:
+      processors: [service-graphs, span-metrics, local-blocks] # enables metrics generator
+      generate_native_histograms: both

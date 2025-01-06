@@ -26,7 +26,7 @@ func run() (err error) {
 	defer stop()
 
 	// Set up OpenTelemetry.
-	conf, err := otel.LoadApplicationConf("./svc1/application.yaml")
+	conf, err := otel.LoadApplicationConf("./svc2/application.yaml")
 	if err != nil {
 		return err
 	}
@@ -41,7 +41,7 @@ func run() (err error) {
 
 	// Start HTTP server.
 	srv := &http.Server{
-		Addr:         ":8080",
+		Addr:         ":8082",
 		BaseContext:  func(_ net.Listener) context.Context { return ctx },
 		ReadTimeout:  time.Second,
 		WriteTimeout: 10 * time.Second,
@@ -82,8 +82,7 @@ func newHTTPHandler() http.Handler {
 	}
 
 	// Register handlers.
-	handleFunc("/rolldice/", rolldice)
-	handleFunc("/rolldice/{player}", rolldice)
+	handleFunc("/svc2/", svc2)
 
 	// Add HTTP instrumentation for the whole server.
 	handler := otelhttp.NewHandler(mux, "/")

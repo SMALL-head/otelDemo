@@ -27,6 +27,17 @@ services:
 #      - "4318:4318"
 #    environment:
 #      - COLLECTOR_ZIPKIN_HTTP_PORT=:9411
+  prometheus:
+    image: prom/prometheus:latest
+    command:
+      - --config.file=/etc/prometheus.yaml
+      - --web.enable-remote-write-receiver
+      - --enable-feature=exemplar-storage
+      - --enable-feature=native-histograms
+    volumes:
+      - ./config/prometheus.yaml:/etc/prometheus.yaml
+    ports:
+      - "9090:9090"
   grafana-tempo:
     image: grafana/tempo:main-06487cc
     command: [ "-config.file=/etc/tempo.yaml" ]
@@ -35,9 +46,9 @@ services:
     ports:
       - "14268"  # jaeger ingest, Jaeger - Thrift HTTP
       - "14250"  # Jaeger - GRPC
-      - "55680:55680"  # OpenTelemetry
+      - "55680"  # OpenTelemetry
       - "4317" # grpc
-      - "4318:4318" # http
+      - "4318" # http
       - "3200:3200"   # tempo
   grafana:
     image: grafana/grafana:11.4.0
@@ -62,12 +73,13 @@ services:
     depends_on:
       - grafana-tempo
 
-#  otel-collector:
-#    image: otel/opentelemetry-collector:0.115.1
-#    command: [ "--config=/etc/otel-collector.yaml" ]
-#    volumes:
-#      - ./config/otel-collector.yaml:/etc/otel-collector.yaml
-#    ports:
-#      - '4318:4318' # 开启http
-#    depends_on:
-#      - grafana-tempo
+
+  otel-collector:
+    image: otel/opentelemetry-collector:0.115.1
+    command: [ "--config=/etc/otel-collector.yaml" ]
+    volumes:
+      - ./config/otel-collector.yaml:/etc/otel-collector.yaml
+    ports:
+      - '4318:4318' # 开启http
+    depends_on:
+      - grafana-tempo
