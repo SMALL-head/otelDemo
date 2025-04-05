@@ -56,7 +56,7 @@ services:
       - '4318:4318' # 开启http
     depends_on:
       - grafana-tempo
-      - analyzer-server
-
-  analyzer-server:
-    image: carlson-zyc/otel-receiver-server:v1.0.0
+#      - analyzer-server
+#
+#  analyzer-server:
+#    image: carlson-zyc/otel-receiver-server:v1.0.0
