@@ -1,32 +1,5 @@
 version: '3'
 services:
-  # otel-collector:
-  #   image: otel/opentelemetry-collector-contrib
-  #   volumes:
-  #     - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
-  #   ports:
-  #     - 1888:1888 # pprof扩展
-  #     - 8888:8888 # Collector公开的Prometheus指标
-  #     - 8889:8889 # Prometheus导出器指标
-  #     - 13133:13133 # health_check扩展
-  #     - 4317:4317 # OTLP gRPC接收器
-  #     - 4318:4318 # OTLP http接收器
-  #     - 55679:55679 # zpages扩展
-#  jaeger:
-#    image: jaegertracing/all-in-one:1.64.0
-#    ports:
-#      - "5775:5775/udp"
-#      - "6831:6831/udp"
-#      - "6832:6832/udp"
-#      - "5778:5778"
-#      - "16686:16686"
-#      - "14268:14268"
-#      - "14250:14250"
-#      - "9411:9411"
-#      - "4317:4317"
-#      - "4318:4318"
-#    environment:
-#      - COLLECTOR_ZIPKIN_HTTP_PORT=:9411
   prometheus:
     image: prom/prometheus:latest
     command:
@@ -83,3 +56,7 @@ services:
       - '4318:4318' # 开启http
     depends_on:
       - grafana-tempo
+#      - analyzer-server
+#
+#  analyzer-server:
+#    image: carlson-zyc/otel-receiver-server:v1.0.0

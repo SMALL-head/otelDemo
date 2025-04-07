@@ -10,8 +10,12 @@ exporters:
     endpoint: grafana-tempo:4317
     tls:
       insecure: true
+  otlp/2:
+    endpoint: analyzer-server:50051
+    tls:
+      insecure: true
 service:
   pipelines:
     traces:
       receivers: [otlp]
-      exporters: [otlp]
+      exporters: [otlp, otlp/2]

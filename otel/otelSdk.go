@@ -47,7 +47,7 @@ func SetupOTelSDK(ctx context.Context, conf *OtelConf) (shutdown func(context.Co
 	prop := newPropagator()
 	otel.SetTextMapPropagator(prop)
 
-	provider, err := newJaegerProvider(ctx, conf.ServiceName)
+	provider, err := tracerProvider(ctx, conf.ServiceName)
 	if err != nil {
 		handleErr(err)
 		return
@@ -64,7 +64,7 @@ func newPropagator() propagation.TextMapPropagator {
 	)
 }
 
-func newJaegerProvider(ctx context.Context, svcName string) (*trace.TracerProvider, error) {
+func tracerProvider(ctx context.Context, svcName string) (*trace.TracerProvider, error) {
 	//exporter, err := jaeger.New(jaeger.WithCollectorEndpoint(jaeger.WithEndpoint(url)))
 	traceExporter, err := otlptracehttp.New(ctx,
 		otlptracehttp.WithEndpoint("127.0.0.1:4318"),

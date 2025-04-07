@@ -2,9 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/baggage"
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"go.opentelemetry.io/contrib/bridges/otelslog"
@@ -24,12 +27,19 @@ func init() {
 func svc2(w http.ResponseWriter, r *http.Request) {
 	//span := opentracing.SpanFromContext(r.Context()).SetTag("svc2", "svc2")
 	_, span := tracer.Start(r.Context(), "[svc2] Get /svc2")
-
+	//spanAttribute1 := attribute.String("svc2-kv", "lalala")
+	//span.SetAttributes(spanAttribute1)
 	defer span.End()
+
+	bag := baggage.FromContext(r.Context())
+
+	value := bag.Member("roll.value").Value()
+	valueInt, err := strconv.ParseInt(value, 10, 32)
+	span.SetAttributes(attribute.Int("roll.value", int(valueInt)))
 
 	// do sth really slow
 	time.Sleep(1 * time.Second)
-	resp := "return from svc2"
+	resp := "return from svc2\n"
 
 	indent, err := json.MarshalIndent(r.Header, "", "  ")
 	if err != nil {

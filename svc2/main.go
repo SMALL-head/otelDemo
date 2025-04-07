@@ -77,8 +77,9 @@ func newHTTPHandler() http.Handler {
 	handleFunc := func(pattern string, handlerFunc func(http.ResponseWriter, *http.Request)) {
 		// Configure the "http.route" for the HTTP instrumentation.
 		handler := otelhttp.WithRouteTag(pattern, http.HandlerFunc(handlerFunc))
-
 		mux.Handle(pattern, handler)
+
+		//mux.Handle(pattern, http.HandlerFunc(handlerFunc))
 	}
 
 	// Register handlers.
@@ -87,4 +88,6 @@ func newHTTPHandler() http.Handler {
 	// Add HTTP instrumentation for the whole server.
 	handler := otelhttp.NewHandler(mux, "/")
 	return handler
+
+	//return mux
 }
