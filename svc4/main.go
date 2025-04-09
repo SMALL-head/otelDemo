@@ -5,8 +5,15 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
+	otel2 "go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 	"otelDemo/otel"
 	"otelDemo/otelgin/core/server"
+	"time"
+)
+
+var (
+	tracer trace.Tracer
 )
 
 func main() {
@@ -23,9 +30,11 @@ func main() {
 	defer func() {
 		err = errors.Join(err, otelShutdown(context.Background()))
 	}()
-
+	tracer = otel2.Tracer(conf.ServiceName)
 	ginServer := server.NewOtelGinServer(gin.ReleaseMode, conf.ServiceName)
 	ginServer.GET("/svc4", func(c *gin.Context) {
+		// do something slow
+		time.Sleep(500 * time.Microsecond)
 		c.JSON(200, gin.H{
 			"message": "Hello from svc4",
 		})

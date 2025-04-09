@@ -11,7 +11,9 @@ exporters:
     tls:
       insecure: true
   otlp/2:
-    endpoint: analyzer-server:50051
+#    endpoint: analyzer-server:50051
+    endpoint: host.docker.internal:8050
+#    endpoint: host.docker.internal:50051
     tls:
       insecure: true
 service:
@@ -19,3 +21,4 @@ service:
     traces:
       receivers: [otlp]
       exporters: [otlp, otlp/2]
+#      exporters: [otlp/2]

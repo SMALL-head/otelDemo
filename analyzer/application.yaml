@@ -1,0 +1,4 @@
+tempo:
+  host: http://127.0.0.1:3200 # 必须使用http开头
+server:
+  port: 8050
