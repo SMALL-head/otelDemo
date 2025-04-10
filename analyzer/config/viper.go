@@ -13,6 +13,9 @@ type AnalyzerConfig struct {
 	Server struct {
 		Port int `mapstructure:"port"`
 	} `mapstructure:"server"`
+	DataSource struct {
+		Host string `mapstructure:"host"`
+	} `mapstructure:"datasource"`
 }
 
 func LoadConfig(cfgFile string) (*AnalyzerConfig, error) {

@@ -10,6 +10,8 @@ import (
 	"net"
 	"otelDemo/analyzer/common/otelmodel"
 	"otelDemo/analyzer/config"
+	"otelDemo/analyzer/svc"
+	"otelDemo/db/dao"
 	"otelDemo/utils/httpc"
 	"otelDemo/utils/otelutils"
 	"otelDemo/utils/otelutils/openapi"
@@ -26,32 +28,51 @@ type TraceAnalyzerServer struct {
 	traceIdMutex sync.RWMutex
 
 	analyseCh chan string // 此通道内存放需要分析的traceID，我们并不希望立即分析，希望间隔一小段时间后分析
+
+	svc *svc.Svc
 }
 
 type TraceAnalyzerGrpcServer struct {
 	Addr   string
 	Server *grpc.Server
 	Cfg    *config.AnalyzerConfig
+
+	traceAnalyzerSvc *TraceAnalyzerServer
 }
 
-func (s *TraceAnalyzerGrpcServer) Run() error {
-	lis, err := net.Listen("tcp", s.Addr)
+func (s *TraceAnalyzerGrpcServer) Init() {
+	conn, err := dao.NewDBConn(context.Background(), s.Cfg.DataSource.Host)
 	if err != nil {
-		logrus.Fatalf("Failed to listen: %v", err)
+		logrus.Fatalf("[Init] - 数据库连接失败, err = %v", err)
 	}
+	db := dao.NewDBTXQuery(conn)
 	srv := &TraceAnalyzerServer{
 		traceId:      make(map[string]bool),
 		traceIdMutex: sync.RWMutex{},
 		analyseCh:    make(chan string, 100), // 缓冲区大小为100
 		cfg:          s.Cfg,
+		svc:          svc.New(db),
 	}
-	tracev1.RegisterTraceServiceServer(s.Server, srv)
-	logrus.Infof("[Run] - 启动分析协程")
 
+	s.traceAnalyzerSvc = srv
+	tracev1.RegisterTraceServiceServer(s.Server, srv)
+}
+
+func (s *TraceAnalyzerGrpcServer) Run() error {
+	if s.Server == nil || s.traceAnalyzerSvc == nil {
+		logrus.Fatalf("[Run] - grpc server 未初始化")
+	}
+
+	lis, err := net.Listen("tcp", s.Addr)
+	if err != nil {
+		logrus.Fatalf("Failed to listen: %v", err)
+	}
+
+	logrus.Infof("[Run] - 启动分析协程")
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	defer cancelFunc()
 	go func() {
-		srv.analyse(ctx.Done())
+		s.traceAnalyzerSvc.analyse(ctx.Done())
 	}()
 
 	logrus.Infof("[Run] - 监听地址: %s", s.Addr)
@@ -82,6 +103,14 @@ func (s *TraceAnalyzerServer) analyse(stopCh <-chan struct{}) {
 				} else {
 					// todo: 对data进行分析
 					logrus.Infof("[analyse] - data size = %d", len(data.Batches))
+					patterns, err := s.svc.GetAllPattern(context.TODO())
+					if err != nil {
+						logrus.Errorf("[analyse] - 获取所有pattern失败, err = %v", err)
+						return
+					}
+					for i, pattern := range patterns {
+						logrus.Infof("[analyse] - 全量获取patterns, #%d: %s", i, pattern.GraphData)
+					}
 				}
 
 			}()

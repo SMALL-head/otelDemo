@@ -109,6 +109,7 @@ func run(cmd *cobra.Command, args []string) {
 	sigIntCh := make(chan os.Signal) // 用于接收程序退出的信号
 	signal.Notify(sigIntCh, os.Interrupt)
 	grpcServer := grpc.NewTraceAnalyzerServer(cfg)
+	grpcServer.Init()
 	go func() {
 		if err = grpcServer.Run(); err != nil {
 			logrus.Fatalf("[run] - 运行grpc服务器失败")
