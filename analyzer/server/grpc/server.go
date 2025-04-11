@@ -88,7 +88,7 @@ func (s *TraceAnalyzerServer) analyse(stopCh <-chan struct{}) {
 		case traceId := <-s.analyseCh:
 			logrus.Infof("[analyse] - traceId = %s", traceId)
 			go func() {
-				time.Sleep(8 * time.Second) // 等待tempo那边把traceid的数据都整理好，然后我们调用tempo的api接口获取这条traceid 的数据
+				time.Sleep(6 * time.Second) // 等待tempo那边把traceid的数据都整理好，然后我们调用tempo的api接口获取这条traceid 的数据
 				request, err := openapi.MakeTraceIdRequest(s.cfg.Tempo.Host, traceId, "", "")
 				if err != nil {
 					logrus.Errorf("[analyse] - 创建请求失败, err = %v", err)
@@ -96,23 +96,33 @@ func (s *TraceAnalyzerServer) analyse(stopCh <-chan struct{}) {
 				}
 				// todo: 完成接下来的response分析
 				response, err := httpc.SendHttpRequest(request)
-				data := &otelmodel.TraceData{}
-				if err = httpc.MarshalResp(response, data); err != nil {
+				tData := &otelmodel.TraceData{}
+				if err = httpc.MarshalResp(response, tData); err != nil {
 					logrus.Errorf("[analyse] - 解析响应失败, traceid = %s, err = %v", traceId, err)
 					return
 				} else {
 					// todo: 对data进行分析
-					logrus.Infof("[analyse] - data size = %d", len(data.Batches))
-					patterns, err := s.svc.GetAllPattern(context.TODO())
+					patternInfos, err := s.svc.GetAllPattern(context.TODO())
+					patterns := make([]*otelmodel.PatternTree, 0)
+					for _, each := range patternInfos {
+						tree, err := otelmodel.Pattern2Tree(each.GraphData)
+						if err != nil {
+							logrus.Errorf("[analyse] - 将pattern转化为tree失败, err = %v, pattern_name = %s", each.Name, err)
+							continue
+						}
+						patterns = append(patterns, tree)
+					}
 					if err != nil {
 						logrus.Errorf("[analyse] - 获取所有pattern失败, err = %v", err)
 						return
 					}
-					for i, pattern := range patterns {
-						logrus.Infof("[analyse] - 全量获取patterns, #%d: %s", i, pattern.GraphData)
+					tree, err := otelmodel.TransferTraceData2Tree(tData)
+					if err != nil {
+						logrus.Errorf("[analyse] - 将tracedata转化为tree失败, err = %v", err)
+						return
 					}
+					match(patterns, tree)
 				}
-
 			}()
 		case <-stopCh:
 			logrus.Infof("[analyse] - 关闭分析服务")
@@ -172,5 +182,14 @@ func NewTraceAnalyzerServer(cfg *config.AnalyzerConfig) *TraceAnalyzerGrpcServer
 		Addr:   fmt.Sprintf(":%d", cfg.Server.Port),
 		Server: server,
 		Cfg:    cfg,
+	}
+}
+
+func match(patterns []*otelmodel.PatternTree, tree *otelmodel.TraceDataTree) {
+	for _, pattern := range patterns {
+		if otelmodel.MatchPattern(pattern, tree) {
+			// todo: 匹配成功，进行后续处理
+			logrus.Infof("[analyse] - [match] - 匹配成功, traceId = %s, pattern = %s", tree.TraceId, pattern.Root.Value)
+		}
 	}
 }
