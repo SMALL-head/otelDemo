@@ -6,6 +6,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/baggage"
 	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 	"io"
 	"otelDemo/otelgin/common/consts"
 )
@@ -29,8 +30,10 @@ func otelMiddleware(tracerName string) gin.HandlerFunc {
 	propagator := otel.GetTextMapPropagator()
 	tracer := otel.Tracer(tracerName)
 	return func(c *gin.Context) {
+		// 从请求头中提取traceid和baggage信息，填充入ctx里，这样对于服务内的恒宇handler都能够有这个信息
 		ctx := propagator.Extract(c.Request.Context(), propagation.HeaderCarrier(c.Request.Header))
-		ctx, span := tracer.Start(ctx, c.Request.URL.Path)
+		// 生成span，注意这个的spankind设置为server，有利于tempo中的调用关系分析
+		ctx, span := tracer.Start(ctx, c.Request.URL.Path, trace.WithSpanKind(trace.SpanKindServer))
 		defer span.End()
 		c.Request = c.Request.WithContext(ctx)
 		bag := baggage.FromContext(ctx)

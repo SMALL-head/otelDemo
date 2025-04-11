@@ -60,3 +60,13 @@ services:
 #
 #  analyzer-server:
 #    image: carlson-zyc/otel-receiver-server:v1.0.0
+  pg-db:
+    image: postgres:14.17
+    ports:
+      - "5432:5432"
+    volumes:
+      - /Users/zyc/db_volume/pg/oteldemo/data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: tracing
