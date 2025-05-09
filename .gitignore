@@ -38,3 +38,5 @@ Thumbs.db
 
 # powerdesigner
 *.pdb
+
+application.yaml
