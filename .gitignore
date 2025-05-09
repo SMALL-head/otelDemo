@@ -4,6 +4,7 @@
 /.project
 /.idea
 /logs
+/tmp
 
 # maven ignore
 target/

@@ -43,7 +43,7 @@ func init() {
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	rootCmd.Flags().Int32P("interval", "i", 1000, "轮询间隔,单位为默认为毫秒,目前不支持修改")
+	rootCmd.Flags().Int32P("interval", "i", 1000, "轮询间隔,单位为默认为毫秒,目前不支持修改。已废弃，现在改成响应式的了")
 	rootCmd.Flags().StringP("config", "c", "application.yaml", "配置文件,注意目录相对位置")
 
 }
@@ -99,19 +99,19 @@ func init() {
 //}
 
 func run(cmd *cobra.Command, args []string) {
-	configFile := cmd.Flag("config").Value.String()
-	cfg, err := config.LoadConfig(configFile)
-	if err != nil {
-		logrus.Fatalf("[run] - 加载配置文件失败, err = %v", err)
-		return
-	}
-
+	// configFile := cmd.Flag("config").Value.String()
+	// cfg, err := config.LoadConfig(configFile)
+	//if err != nil {
+	//	logrus.Fatalf("[run] - 加载配置文件失败, err = %v", err)
+	//	return
+	//}
 	sigIntCh := make(chan os.Signal) // 用于接收程序退出的信号
 	signal.Notify(sigIntCh, os.Interrupt)
+	cfg := config.AnalyzerConfigDeepCopy(config.ApplicationConfig)
 	grpcServer := grpc.NewTraceAnalyzerServer(cfg)
 	grpcServer.Init()
 	go func() {
-		if err = grpcServer.Run(); err != nil {
+		if err := grpcServer.Run(); err != nil {
 			logrus.Fatalf("[run] - 运行grpc服务器失败")
 		}
 	}()

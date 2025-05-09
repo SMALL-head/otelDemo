@@ -15,3 +15,9 @@ go run ./svc1/...
 # run in another terminal
 go run ./svc2/... 
 ```
+
+```bash
+# 启动analyzer
+cd analyzer
+go run .
+```

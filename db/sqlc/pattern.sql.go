@@ -7,8 +7,6 @@ package sqlc
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const insertPattern = `-- name: InsertPattern :one
@@ -23,18 +21,19 @@ type InsertPatternParams struct {
 	GraphData   []byte
 }
 
-func (q *Queries) InsertPattern(ctx context.Context, arg InsertPatternParams) (pgtype.Int4, error) {
+func (q *Queries) InsertPattern(ctx context.Context, arg InsertPatternParams) (int32, error) {
 	row := q.db.QueryRow(ctx, insertPattern, arg.Name, arg.Description, arg.GraphData)
-	var id pgtype.Int4
+	var id int32
 	err := row.Scan(&id)
 	return id, err
 }
 
 const selectAllPattern = `-- name: SelectAllPattern :many
-select "name", "desc", graph_data from oteldemo.pattern
+select "id", "name", "desc", graph_data from oteldemo.pattern
 `
 
 type SelectAllPatternRow struct {
+	ID        int32
 	Name      string
 	Desc      string
 	GraphData []byte
@@ -49,7 +48,12 @@ func (q *Queries) SelectAllPattern(ctx context.Context) ([]SelectAllPatternRow, 
 	var items []SelectAllPatternRow
 	for rows.Next() {
 		var i SelectAllPatternRow
-		if err := rows.Scan(&i.Name, &i.Desc, &i.GraphData); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Desc,
+			&i.GraphData,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
