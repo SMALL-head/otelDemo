@@ -10,7 +10,7 @@ import (
 
 // 需要检验的pattern
 type OteldemoPattern struct {
-	ID pgtype.Int4
+	ID int32
 	// 名字
 	Name      string
 	Desc      string

@@ -8,7 +8,26 @@ import (
 func MatchPattern(pattern *PatternTree, trace *TraceDataTree) bool {
 	// 对trace中的每个子树，看看是否匹配pattern
 	pRoot, tRoot := pattern.Root, trace.Root
-	return matchPatternTreeNode(pRoot, tRoot)
+	if pRoot == nil {
+		return true
+	}
+	var dfs func(t *TraceDataNode) bool
+	dfs = func(t *TraceDataNode) bool {
+		if t == nil {
+			return false
+		}
+		if matchPatternTreeNode(pRoot, t) {
+			// 匹配成功
+			return true
+		}
+		for _, child := range t.Children {
+			if dfs(child) {
+				return true
+			}
+		}
+		return false
+	}
+	return dfs(tRoot)
 
 }
 
@@ -55,4 +74,27 @@ func matchPatternTreeNode(patternRoot *PatternTreeNode, traceRoot *TraceDataNode
 	}
 	return childMatchFlag
 
+}
+
+func GetCybertwinInfoFromTraceData(trace *TraceData) string {
+	resourceSpans := trace.Trace.ResourceSpans
+	if len(resourceSpans) == 0 {
+		return ""
+	}
+	scopeSpans := resourceSpans[0].ScopeSpans
+	if len(scopeSpans) == 0 {
+		return ""
+	}
+	spans := scopeSpans[0].Spans
+	if len(spans) == 0 {
+		return ""
+	}
+	// 这里假设cybertwin信息在第一个span中
+	attributes := spans[0].Attributes
+	for _, attr := range attributes {
+		if attr.Key == "cybertwin_id" {
+			return attr.Value.StringValue
+		}
+	}
+	return ""
 }

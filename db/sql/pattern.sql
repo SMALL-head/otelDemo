@@ -1,5 +1,5 @@
 -- name: SelectAllPattern :many
-select "name", "desc", graph_data from oteldemo.pattern;
+select "id", "name", "desc", graph_data from oteldemo.pattern;
 
 -- name: InsertPattern :one
 insert into oteldemo.pattern (name, "desc", graph_data)

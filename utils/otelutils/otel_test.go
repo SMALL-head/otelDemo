@@ -11,5 +11,4 @@ func TestDecodeOtelID(t *testing.T) {
 	s, err := otelutils.DecodeOtelID("3Hj505iBlX8=")
 	require.NoError(t, err)
 	fmt.Printf("%s", s)
-
 }

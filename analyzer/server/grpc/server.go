@@ -10,6 +10,7 @@ import (
 	"net"
 	"otelDemo/analyzer/common/otelmodel"
 	"otelDemo/analyzer/config"
+	"otelDemo/analyzer/httpclient"
 	"otelDemo/analyzer/svc"
 	"otelDemo/db/dao"
 	"otelDemo/utils/httpc"
@@ -86,10 +87,11 @@ func (s *TraceAnalyzerServer) analyse(stopCh <-chan struct{}) {
 	for {
 		select {
 		case traceId := <-s.analyseCh:
-			logrus.Infof("[analyse] - traceId = %s", traceId)
+
 			go func() {
 				time.Sleep(6 * time.Second) // 等待tempo那边把traceid的数据都整理好，然后我们调用tempo的api接口获取这条traceid 的数据
-				request, err := openapi.MakeTraceIdRequest(s.cfg.Tempo.Host, traceId, "", "")
+				logrus.Infof("[analyse] - start analyse traceId = %s", traceId)
+				request, err := openapi.MakeTraceIdRequest(config.ApplicationConfig.Tempo.Host, traceId, "", "")
 				if err != nil {
 					logrus.Errorf("[analyse] - 创建请求失败, err = %v", err)
 					return
@@ -104,8 +106,12 @@ func (s *TraceAnalyzerServer) analyse(stopCh <-chan struct{}) {
 					// todo: 对data进行分析
 					patternInfos, err := s.svc.GetAllPattern(context.TODO())
 					patterns := make([]*otelmodel.PatternTree, 0)
+					cybertwinInfo := otelmodel.GetCybertwinInfoFromTraceData(tData)
+					if cybertwinInfo == "" {
+						logrus.Warnf("[analyse] - traceId = %s, 没有cybertwin信息", traceId)
+					}
 					for _, each := range patternInfos {
-						tree, err := otelmodel.Pattern2Tree(each.GraphData)
+						tree, err := otelmodel.Pattern2Tree(int(each.ID), each.Name, each.GraphData)
 						if err != nil {
 							logrus.Errorf("[analyse] - 将pattern转化为tree失败, err = %v, pattern_name = %s", each.Name, err)
 							continue
@@ -121,7 +127,7 @@ func (s *TraceAnalyzerServer) analyse(stopCh <-chan struct{}) {
 						logrus.Errorf("[analyse] - 将tracedata转化为tree失败, err = %v", err)
 						return
 					}
-					match(patterns, tree)
+					match(patterns, tree, cybertwinInfo)
 				}
 			}()
 		case <-stopCh:
@@ -136,6 +142,8 @@ func (s *TraceAnalyzerGrpcServer) Close() {
 	logrus.Infof("[TraceAnalyzerGrpcServer] - 关闭成功")
 }
 
+// Export 实现grpc otel-collector的TracerServer接口，当有trace上报的时候会调用这个接口。
+// 注意，这个接口并不是按照traceid为单位的上报数据，也就是说，同一个traceid下的span可能会分多次上报
 func (s *TraceAnalyzerServer) Export(ctx context.Context, request *tracev1.ExportTraceServiceRequest) (*tracev1.ExportTraceServiceResponse, error) {
 	for _, each := range request.ResourceSpans {
 		for _, span := range each.ScopeSpans {
@@ -185,11 +193,15 @@ func NewTraceAnalyzerServer(cfg *config.AnalyzerConfig) *TraceAnalyzerGrpcServer
 	}
 }
 
-func match(patterns []*otelmodel.PatternTree, tree *otelmodel.TraceDataTree) {
+func match(patterns []*otelmodel.PatternTree, tree *otelmodel.TraceDataTree, cybertwinLabel string) {
 	for _, pattern := range patterns {
 		if otelmodel.MatchPattern(pattern, tree) {
 			// todo: 匹配成功，进行后续处理
 			logrus.Infof("[analyse] - [match] - 匹配成功, traceId = %s, pattern = %s", tree.TraceId, pattern.Root.Value)
+			//res := httpclient.FlareAdmin.HelloClient()
+			//logrus.Info("[analyse] - [match] - 匹配成功, res = ", res)
+			res := httpclient.FlareAdmin.AddMatchResultRecord(pattern.ID, 0, cybertwinLabel)
+			logrus.Infof("[analyse] - [match] - 添加结果, res = %v", res)
 		}
 	}
 }

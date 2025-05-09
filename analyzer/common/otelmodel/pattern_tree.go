@@ -25,6 +25,7 @@ type Node struct {
 type PatternTree struct {
 	Root *PatternTreeNode
 	Name string
+	ID   int
 }
 
 type PatternTreeNode struct {
@@ -35,7 +36,7 @@ type PatternTreeNode struct {
 
 // Pattern2Tree converts a pattern string to a PatternTree.
 // pattern is a json string
-func Pattern2Tree(pattern []byte) (*PatternTree, error) {
+func Pattern2Tree(id int, name string, pattern []byte) (*PatternTree, error) {
 	var patternGraph PatternGraph
 	if err := json.Unmarshal(pattern, &patternGraph); err != nil {
 		return nil, err
@@ -69,7 +70,8 @@ func Pattern2Tree(pattern []byte) (*PatternTree, error) {
 		if node != nil {
 			return &PatternTree{
 				Root: node,
-				Name: node.Value,
+				Name: name,
+				ID:   id,
 			}, nil
 		}
 	}

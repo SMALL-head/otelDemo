@@ -1,10 +1,13 @@
 package config
 
 import (
+	"encoding/json"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"os"
 )
+
+var ApplicationConfig *AnalyzerConfig
 
 type AnalyzerConfig struct {
 	Tempo struct {
@@ -16,6 +19,32 @@ type AnalyzerConfig struct {
 	DataSource struct {
 		Host string `mapstructure:"host"`
 	} `mapstructure:"datasource"`
+	Httpclient struct {
+		Tempo struct {
+			Dev struct {
+				Host string `mapstructure:"host"`
+			} `mapstructure:"dev"`
+		} `mapstructure:"tempo"`
+		FlareAdmin struct {
+			Dev struct {
+				Host string `mapstructure:"host"`
+			} `mapstructure:"dev"`
+		} `mapstructure:"flare-admin"`
+	} `mapstructure:"httpclient"`
+}
+
+func AnalyzerConfigDeepCopy(cfg *AnalyzerConfig) *AnalyzerConfig {
+	newCfg := &AnalyzerConfig{}
+	marshal, err := json.Marshal(cfg)
+	if err != nil {
+		logrus.Errorf("[AnalyzerConfigDeepCopy] - json.Marshal(cfg) failed, err = %v", err)
+		return nil
+	}
+	if err = json.Unmarshal(marshal, newCfg); err != nil {
+		logrus.Errorf("[AnalyzerConfigDeepCopy] - json.Unmarshal(marshal, newCfg) failed, err = %v", err)
+		return nil
+	}
+	return newCfg
 }
 
 func LoadConfig(cfgFile string) (*AnalyzerConfig, error) {
@@ -46,4 +75,15 @@ func loadViperConfig(cfgFile string, config *AnalyzerConfig) error {
 		return err
 	}
 	return nil
+}
+
+func init() {
+	// 读取配置文件
+	cfgFile := "application.yaml"
+	cfg, err := LoadConfig(cfgFile)
+	if err != nil {
+		logrus.Fatalf("[init] - 加载配置文件失败, err = %v", err)
+	}
+	ApplicationConfig = cfg
+	logrus.Infof("[init] - 配置文件加载成功. configFile = %s", cfgFile)
 }
