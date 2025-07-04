@@ -30,7 +30,7 @@ func otelMiddleware(tracerName string) gin.HandlerFunc {
 	propagator := otel.GetTextMapPropagator()
 	tracer := otel.Tracer(tracerName)
 	return func(c *gin.Context) {
-		// 从请求头中提取traceid和baggage信息，填充入ctx里，这样对于服务内的恒宇handler都能够有这个信息
+		// 从请求头中提取traceid和baggage信息，填充入ctx里，这样对于服务内的所有handler都能够有这个信息
 		ctx := propagator.Extract(c.Request.Context(), propagation.HeaderCarrier(c.Request.Header))
 		// 生成span，注意这个的spankind设置为server，有利于tempo中的调用关系分析
 		ctx, span := tracer.Start(ctx, c.Request.URL.Path, trace.WithSpanKind(trace.SpanKindServer))
@@ -55,6 +55,7 @@ func otelMiddleware(tracerName string) gin.HandlerFunc {
 				// 如果header中有ctid，添加到baggage中
 				b, _ := baggage.NewMember(consts.CybertwinKey, ctID)
 				bag, _ = bag.SetMember(b)
+				c.Request.Header.Add(consts.CybertwinKey, ctID)
 				c.Request = c.Request.WithContext(baggage.ContextWithBaggage(c.Request.Context(), bag)) // 重新组装ctx
 			}
 		}

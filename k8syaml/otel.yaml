@@ -1,0 +1,430 @@
+# Prometheus ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+data:
+  prometheus.yaml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+    
+    scrape_configs:
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: [ 'localhost:9090' ]
+      - job_name: 'tempo'
+        static_configs:
+          - targets: [ 'grafana-tempo:3200' ]
+---
+# Tempo ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tempo-config
+data:
+  tempo.yaml: |
+    auth_enabled: false
+    stream_over_http_enabled: true
+
+    server:
+      http_listen_port: 3200
+
+    distributor:
+      receivers: # this configuration will listen on all ports and protocols that tempo is capable of.
+        jaeger: # the receives all come from the OpenTelemetry collector.  more configuration information can
+          protocols: # be found there: https://github.com/open-telemetry/opentelemetry-collector/tree/master/receiver
+            thrift_http:                   #
+            grpc:                          # for a production deployment you should only enable the receivers you need!
+            thrift_binary:
+            thrift_compact:
+        zipkin:
+        otlp:
+          protocols:
+            http:
+            grpc:
+              endpoint: "0.0.0.0:4317"
+        opencensus:
+
+    ingester:
+      trace_idle_period: 10s               # the length of time after a trace has not received spans to consider it complete and flush it
+      max_block_bytes: 1_000_000           # cut the head block when it hits this size or ...
+      #traces_per_block: 1_000_000
+      max_block_duration: 5m               #   this much time passes
+
+    compactor:
+      compaction:
+        compaction_window: 1h              # blocks in this time window will be compacted together
+        max_compaction_objects: 1000000    # maximum size of compacted blocks
+        block_retention: 1h
+        compacted_block_retention: 10m
+
+    metrics_generator:
+      storage:
+        path: /var/tempo/generator/wal
+        remote_write:
+          - url: http://prometheus:9090/api/v1/write
+            send_exemplars: true
+      traces_storage:
+        path: /var/tempo/generator/traces
+      processor:
+        local_blocks:
+          filter_server_spans: false
+          flush_to_storage: true
+
+    storage:
+      trace:
+        backend: local                     # backend configuration to use
+        wal:
+          path: /tmp/tempo/wal            # where to store the wal locally
+          #bloom_filter_false_positive: .05 # bloom filter false positive rate.  lower values create larger filters but fewer false positives
+          #index_downsample: 10             # number of traces per index record
+        local:
+          path: /tmp/tempo/blocks
+        pool:
+          max_workers: 100                 # the worker pool mainly drives querying, but is also used for polling the blocklist
+          queue_depth: 10000
+
+    overrides:
+      defaults:
+        metrics_generator:
+          processors: [ service-graphs, span-metrics, local-blocks ] # enables metrics generator
+          generate_native_histograms: both
+---
+# Tempo Query ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tempo-query-config
+data:
+  tempo-query.yaml: |
+    backend: "grafana-tempo:3200"
+---
+# Grafana Datasource ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+data:
+  datasource.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        uid: prometheus
+        access: proxy
+        orgId: 1
+        url: http://prometheus:9090
+        basicAuth: false
+        isDefault: false
+        version: 1
+        editable: false
+        jsonData:
+          httpMethod: GET
+      - name: Tempo
+        type: tempo
+        access: proxy
+        orgId: 1
+        url: http://grafana-tempo:3200
+        basicAuth: false
+        isDefault: false
+        version: 1
+        editable: false
+        apiVersion: 1
+        jsonData:
+          httpMethod: GET
+          serviceMap:
+            datasourceUid: prometheus
+          streamingEnabled:
+            search: true
+        uid: tempo
+      - name: 'Jaeger (Tempo)'
+        type: jaeger
+        access: proxy
+        orgId: 1
+        url: http://tempo-query:16686
+        basicAuth: false
+        isDefault: false
+        version: 1
+        editable: false
+        apiVersion: 1
+        uid: jaeger-tempo
+      - name: Loki
+        type: loki
+        access: proxy
+        orgId: 1
+        url: http://loki:3100
+        basicAuth: false
+        isDefault: false
+        version: 1
+        editable: false
+        apiVersion: 1
+        jsonData:
+          derivedFields:
+            - datasourceUid: tempo
+              matcherRegex: \[.+,(.+),.+\]
+              name: TraceID
+              url: $${__value.raw}
+---
+# OpenTelemetry Collector ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-config
+data:
+  otel-collector.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    exporters:
+      otlp:
+        endpoint: grafana-tempo:4317
+        tls:
+          insecure: true
+      otlp/2:
+        endpoint: analyzer-server:50051
+        #    endpoint: host.docker.internal:8050
+        #    endpoint: host.docker.internal:50051
+        tls:
+          insecure: true
+    service:
+      pipelines:
+        traces:
+          receivers: [ otlp ]
+          exporters: [ otlp, otlp/2 ]
+    #      exporters: [otlp/2]
+---
+# prometheus Deployment and Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      containers:
+        - name: prometheus
+          image: prom/prometheus:latest
+          args: [ "--config.file=/etc/prometheus.yaml", "--web.enable-remote-write-receiver", "--enable-feature=exemplar-storage", "--enable-feature=native-histograms" ]
+          ports:
+            - containerPort: 9090
+          volumeMounts:
+            - name: prometheus-config
+              mountPath: /etc/prometheus.yaml
+              subPath: prometheus.yaml
+      volumes:
+        - name: prometheus-config
+          configMap:
+            name: prometheus-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+spec:
+  selector:
+    app: prometheus
+  ports:
+    - port: 9090
+      targetPort: 9090
+---
+# tempo Deployment and Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana-tempo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana-tempo
+  template:
+    metadata:
+      labels:
+        app: grafana-tempo
+    spec:
+      containers:
+        - name: tempo
+          image: grafana/tempo:main-06487cc
+          args: [ "-config.file=/etc/tempo.yaml" ]
+          ports:
+            - containerPort: 14268
+            - containerPort: 14250
+            - containerPort: 55680
+            - containerPort: 4317
+            - containerPort: 4318
+            - containerPort: 3200
+          volumeMounts:
+            - name: tempo-config
+              mountPath: /etc/tempo.yaml
+              subPath: tempo.yaml
+      volumes:
+        - name: tempo-config
+          configMap:
+            name: tempo-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana-tempo
+spec:
+  selector:
+    app: grafana-tempo
+  ports:
+    - port: 14268
+      targetPort: 14268
+      name: jaeger-ingest
+    - port: 14250
+      name: jaeger-grpc
+      targetPort: 14250
+    - port: 55680
+      targetPort: 55680
+      name: otel
+    - port: 4317
+      name: grpc
+      targetPort: 4317
+    - port: 4318
+      targetPort: 4318
+      name: http
+    - port: 3200
+      targetPort: 3200
+      name: tempo
+---
+# grafana Deployment and Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana:11.4.0
+          env:
+            - name: GF_AUTH_ANONYMOUS_ENABLED
+              value: "true"
+            - name: GF_AUTH_ANONYMOUS_ORG_ROLE
+              value: "Admin"
+            - name: GF_AUTH_DISABLE_LOGIN_FORM
+              value: "true"
+          ports:
+            - containerPort: 3000
+          volumeMounts:
+            - name: grafana-datasources
+              mountPath: /etc/grafana/provisioning/datasources
+      volumes:
+        - name: grafana-datasources
+          configMap:
+            name: grafana-datasources
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+spec:
+  selector:
+    app: grafana
+  ports:
+    - port: 3000
+      targetPort: 3000
+---
+# tempo-query Deployment and Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tempo-query
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tempo-query
+  template:
+    metadata:
+      labels:
+        app: tempo-query
+    spec:
+      containers:
+        - name: tempo-query
+          image: grafana/tempo-query:main-82de08f
+          args: [ "-config=/etc/tempo-query.yaml" ]
+          ports:
+            - containerPort: 16686
+          volumeMounts:
+            - name: tempo-query-config
+              mountPath: /etc/tempo-query.yaml
+              subPath: tempo-query.yaml
+      volumes:
+        - name: tempo-query-config
+          configMap:
+            name: tempo-query-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tempo-query
+spec:
+  selector:
+    app: tempo-query
+  ports:
+    - port: 16686
+      targetPort: 16686
+---
+# otel-collector Deployment and Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: otel-collector
+  template:
+    metadata:
+      labels:
+        app: otel-collector
+    spec:
+      containers:
+        - name: otel-collector
+          image: otel/opentelemetry-collector:0.115.1
+          args: [ "--config=/etc/otel-collector.yaml" ]
+          ports:
+            - containerPort: 4318
+          volumeMounts:
+            - name: otel-config
+              mountPath: /etc/otel-collector.yaml
+              subPath: otel-collector.yaml
+      volumes:
+        - name: otel-config
+          configMap:
+            name: otel-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+spec:
+  selector:
+    app: otel-collector
+  ports:
+    - port: 4318
+      targetPort: 4318
