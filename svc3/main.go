@@ -41,7 +41,7 @@ func main() {
 	ginServer.GET("/tosvc4", func(c *gin.Context) {
 		// baggage信息通过propagation传递
 		clt := client.New()
-		record, err2 := clt.ReqWithOtelRecord(c.Request.Context(), "http://127.0.0.1:8084/svc4", "GET", nil, conf.ServiceName)
+		record, err2 := clt.ReqWithOtelRecord(c.Request.Context(), "http://svc4:8084/svc4", "GET", nil, conf.ServiceName)
 		if err2 != nil {
 			logrus.Errorf("[main]-请求svc4失败: %v", err2)
 			c.JSON(500, gin.H{
