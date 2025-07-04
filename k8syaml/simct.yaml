@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: simct1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: simct1
+  template:
+    metadata:
+      labels:
+        app: simct1
+    spec:
+      containers:
+        - name: simct1
+          image: registry.cn-shanghai.aliyuncs.com/carl-zyc/simct:v1
+          ports:
+            - containerPort: 8080
+          env:
+            - name: OTEL_ENDPOINT
+              value: "otel-collector:4318"
+            - name: SERVICE_NAME
+              value: "simct1"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: simct1
+spec:
+  selector:
+    app: simct1
+  type: NodePort
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: port8080
+      nodePort: 30080

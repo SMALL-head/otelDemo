@@ -7,9 +7,30 @@ import (
 	"go.opentelemetry.io/otel/baggage"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
+	"gopkg.in/yaml.v3"
 	"io"
+	"os"
 	"otelDemo/otelgin/common/consts"
 )
+
+type ServerConf struct {
+	Port int `yaml:"port"`
+}
+
+func LoadServerConf(filePath string) (*ServerConf, error) {
+	// 这里可以实现从配置文件加载ServerConf的逻辑
+	// 目前只是返回一个默认值
+	fileBytes, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, err
+	}
+	var conf ServerConf
+	if err = yaml.Unmarshal(fileBytes, &conf); err != nil {
+		return nil, err
+	}
+	return &conf, nil
+
+}
 
 // OtelGinEngine 添加了链路追踪能力的gin server
 type OtelGinEngine struct {

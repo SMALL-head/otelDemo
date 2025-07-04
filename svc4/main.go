@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	otel2 "go.opentelemetry.io/otel"
@@ -17,7 +18,7 @@ var (
 )
 
 func main() {
-	conf, err := otel.LoadApplicationConf("./svc4/application.yaml")
+	conf, err := otel.LoadApplicationConf("./application.yaml")
 	if err != nil {
 		logrus.Errorf("[main]-加载配置文件失败: %v", err)
 		return
@@ -30,6 +31,11 @@ func main() {
 	defer func() {
 		err = errors.Join(err, otelShutdown(context.Background()))
 	}()
+	serverConf, err := server.LoadServerConf("./application.yaml")
+	if err != nil {
+		logrus.Errorf("[main]-加载服务配置失败: %v", err)
+		return
+	}
 	tracer = otel2.Tracer(conf.ServiceName)
 	ginServer := server.NewOtelGinServer(gin.ReleaseMode, conf.ServiceName)
 	ginServer.GET("/svc4", func(c *gin.Context) {
@@ -40,7 +46,7 @@ func main() {
 		})
 	})
 
-	if err := ginServer.Run(":8084"); err != nil {
+	if err = ginServer.Run(fmt.Sprintf(":%d", serverConf.Port)); err != nil {
 		panic(err)
 	}
 }

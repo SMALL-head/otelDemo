@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"otelDemo/otel"
@@ -11,11 +12,12 @@ import (
 )
 
 func main() {
-	conf, err := otel.LoadApplicationConf("./svc3/application.yaml")
+	conf, err := otel.LoadApplicationConf("./application.yaml")
 	if err != nil {
 		logrus.Errorf("[main]-加载配置文件失败: %v", err)
 		return
 	}
+	logrus.Infof("[main]-conf.ServiceName: %s, conf.OtelEndPoint = %s", conf.ServiceName, conf.OtelEndPoint)
 	otelShutdown, err := otel.SetupOTelSDK(context.Background(), conf)
 	if err != nil {
 		logrus.Errorf("[main]-初始化OpenTelemetry失败: %v", err)
@@ -24,7 +26,11 @@ func main() {
 	defer func() {
 		err = errors.Join(err, otelShutdown(context.Background()))
 	}()
-
+	serverConf, err := server.LoadServerConf("./application.yaml")
+	if err != nil {
+		logrus.Errorf("[main]-加载服务配置失败: %v", err)
+		return
+	}
 	ginServer := server.NewOtelGinServer(gin.ReleaseMode, conf.ServiceName)
 	ginServer.GET("/svc3", func(c *gin.Context) {
 		c.JSON(200, gin.H{
@@ -49,7 +55,7 @@ func main() {
 		})
 	})
 
-	if err := ginServer.Run(":8083"); err != nil {
+	if err = ginServer.Run(fmt.Sprintf(":%d", serverConf.Port)); err != nil {
 		panic(err)
 	}
 }
