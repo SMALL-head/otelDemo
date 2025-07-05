@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 type BaseClient struct {
@@ -17,8 +18,10 @@ func NewClient(base string) (*BaseClient, error) {
 		return nil, err
 	}
 	return &BaseClient{
-		baseURL:    parsedURL,
-		httpClient: &http.Client{},
+		baseURL: parsedURL,
+		httpClient: &http.Client{
+			Timeout: 3 * time.Second,
+		},
 	}, nil
 }
 

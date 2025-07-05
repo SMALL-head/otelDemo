@@ -1,12 +1,12 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: application-config
+  name: application-config-4
 data:
   application.yaml: |
     serviceName: svc4
     otelEndPoint: "otel-collector:4318"
-    port: 8083
+    port: 8084
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -40,7 +40,7 @@ spec:
       volumes:
         - name: application-config-volume
           configMap:
-            name: application-config
+            name: application-config-4
 ---
 apiVersion: v1
 kind: Service
@@ -51,5 +51,5 @@ spec:
     app: svc4
   ports:
     - protocol: TCP
-      port: 80
+      port: 8084
       targetPort: 8084
