@@ -89,6 +89,11 @@ func (s *TraceAnalyzerServer) analyse(stopCh <-chan struct{}) {
 		case traceId := <-s.analyseCh:
 
 			go func() {
+				defer func() {
+					if r := recover(); r != nil {
+						logrus.Errorf("[analyse] - panic recovered, traceId = %s, err = %v", traceId, r)
+					}
+				}()
 				time.Sleep(6 * time.Second) // 等待tempo那边把traceid的数据都整理好，然后我们调用tempo的api接口获取这条traceid 的数据
 				logrus.Infof("[analyse] - start analyse traceId = %s", traceId)
 				request, err := openapi.MakeTraceIdRequest(config.ApplicationConfig.Tempo.Host, traceId, "", "")
@@ -98,6 +103,10 @@ func (s *TraceAnalyzerServer) analyse(stopCh <-chan struct{}) {
 				}
 				// todo: 完成接下来的response分析
 				response, err := httpc.SendHttpRequest(request)
+				if err != nil {
+					logrus.Errorf("[analyse] - 发送%s求失败, traceid = %s, err = %v", config.ApplicationConfig.Tempo.Host, traceId, err)
+					return
+				}
 				tData := &otelmodel.TraceData{}
 				if err = httpc.MarshalResp(response, tData); err != nil {
 					logrus.Errorf("[analyse] - 解析响应失败, traceid = %s, err = %v", traceId, err)

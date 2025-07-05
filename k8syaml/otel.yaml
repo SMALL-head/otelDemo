@@ -346,6 +346,8 @@ spec:
   ports:
     - port: 3000
       targetPort: 3000
+      nodePort: 30001 # node port grafana dashboard
+  type: NodePort
 ---
 # tempo-query Deployment and Service
 apiVersion: apps/v1
