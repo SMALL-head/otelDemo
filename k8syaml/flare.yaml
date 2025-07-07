@@ -1,0 +1,79 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-flare-engine
+data:
+  application.yaml: |
+    host: 0.0.0.0
+    port: 8080
+    mode: release
+    grpc:
+      reverseSh:
+        host: kt-grpc.kernel-trace.svc.cluster.local
+        port: 50051
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: flare-engine
+spec:
+  selector:
+    matchLabels:
+      app: flare-engine
+  template:
+    metadata:
+      labels:
+        app: flare-engine
+    spec:
+      containers:
+        - name: flare-core
+          image: myregistry.com/library/flare:v2
+          securityContext:
+            privileged: true
+          ports:
+            - containerPort: 8080 # 8080端口为服务器暴露端口
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - mountPath: /app/application.yaml
+              name: config-volume
+              subPath: application.yaml
+            - mountPath: /sys/fs/bpf
+              name: host-bpf
+              mountPropagation: HostToContainer
+            - mountPath: /sys/kernel/debug
+              name: host-bpf-debug
+              mountPropagation: HostToContainer
+            - mountPath: /var/run/docker.sock
+              name: docker-sock
+              mountPropagation: HostToContainer
+      volumes:
+        - name: config-volume
+          configMap:
+            name: config-flare-engine
+        - name: host-bpf
+          hostPath:
+            path: /sys/fs/bpf
+        - name: host-bpf-debug
+          hostPath:
+            path: /sys/kernel/debug
+        - name: docker-sock
+          hostPath:
+            path: /var/run/docker.sock
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flare-engine
+spec:
+  selector:
+    app: flare-engine
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+  type: ClusterIP
+  

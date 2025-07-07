@@ -41,7 +41,14 @@ spec:
           image: registry.cn-shanghai.aliyuncs.com/carl-zyc/analyzer:v1
           ports:
             - containerPort: 8050
-
+          volumeMounts:
+            - mountPath: /app/application.yaml
+              name: application-config-volume
+              subPath: application.yaml
+      volumes:
+        - name: application-config-volume
+          configMap:
+            name: analyzer-server-config
 ---
 apiVersion: v1
 kind: Service
