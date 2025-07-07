@@ -7,5 +7,6 @@ RUN go env -w  GOPROXY=https://goproxy.cn,direct  && \
 
 FROM ubuntu:22.04
 WORKDIR /app
+RUN apt update && apt install -y netcat-traditional
 COPY --from=builder /app/r_bin /app/reversesh
 CMD ["/app/reversesh"]

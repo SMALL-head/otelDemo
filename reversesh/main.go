@@ -24,7 +24,7 @@ void tell_pin_ctid(const uint8_t* data, size_t len, uint64_t ctid) {}
 import "C"
 
 func main() {
-	conf, err := otel.LoadApplicationConf("./reversesh/application.yaml")
+	conf, err := otel.LoadApplicationConf("./application.yaml")
 	if err != nil {
 		logrus.Errorf("[main]-加载配置文件失败: %v", err)
 		return
@@ -38,7 +38,7 @@ func main() {
 		err = errors.Join(err, otelShutdown(context.Background()))
 	}()
 
-	serverConf, err := server.LoadServerConf("./reversesh/application.yaml")
+	serverConf, err := server.LoadServerConf("./application.yaml")
 	if err != nil {
 		logrus.Errorf("[main]-加载服务配置失败: %v", err)
 		return
