@@ -21,7 +21,7 @@ spec:
             - name: OTEL_ENDPOINT
               value: "otel-collector:4318"
             - name: SERVICE_NAME
-              value: "simct1"
+              value: "123"
 ---
 apiVersion: v1
 kind: Service

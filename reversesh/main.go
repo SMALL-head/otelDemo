@@ -72,6 +72,8 @@ func main() {
 			return
 		}
 
+		logrus.Infof("[main] - [POST /mal] - 接收到请求: %s:%d, ctid: %d", req.Host, req.Port, ctidInt)
+
 		// call for a reversesh
 		go func() {
 			// 新建socket请求

@@ -27,7 +27,7 @@ spec:
     spec:
       containers:
         - name: flare-core
-          image: myregistry.com/library/flare:v2
+          image: myregistry.com/library/flare:v3
           securityContext:
             privileged: true
           ports:
