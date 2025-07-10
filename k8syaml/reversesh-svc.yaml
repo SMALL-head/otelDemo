@@ -14,20 +14,23 @@ metadata:
   name: reversesh-svc
   labels:
     app: reversesh-svc
+    kt-replicas: "1"
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: reversesh-svc
+      kernel-trace: "false"
   template:
     metadata:
       name: reversesh-svc
       labels:
         app: reversesh-svc
+        kernel-trace: "false"
     spec:
       containers:
         - name: reversesh-svc
-          image: myregistry.com/library/reversesh-svc:v1
+          image: myregistry.com/library/reversesh-svc:v2
           ports:
             - containerPort: 8085
               protocol: TCP
@@ -43,9 +46,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  labels:
+    kt-replicas: "1"
   name: reversesh-svc
 spec:
   selector:
+    kernel-trace: "false"
     app: reversesh-svc
   ports:
     - protocol: TCP
