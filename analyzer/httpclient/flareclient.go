@@ -3,9 +3,11 @@ package httpclient
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"io"
 	"net/http"
+	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 func (c *FlareAdminClient) HelloClient() string {
@@ -25,15 +27,19 @@ func (c *FlareAdminClient) HelloClient() string {
 	return string(all)
 }
 
-func (c *FlareAdminClient) AddMatchResultRecord(patternID int, cybertwinID int, cybertwinLabel string) string {
+func (c *FlareAdminClient) AddMatchResultRecord(patternID int, cybertwinID int, cybertwinLabel string, analyseTime time.Time, invokeTime time.Time) string {
 	req := struct {
-		PatternID      int    `json:"pattern_id"`
-		CybertwinID    int    `json:"cybertwin_id"`
-		CybertwinLabel string `json:"cybertwin_label"`
+		PatternID      int       `json:"pattern_id"`
+		CybertwinID    int       `json:"cybertwin_id"`
+		CybertwinLabel string    `json:"cybertwin_label"`
+		AnalyseTime    time.Time `json:"analyse_time"`
+		InvokeTime     time.Time `json:"invoke_time"`
 	}{
 		PatternID:      patternID,
 		CybertwinID:    cybertwinID,
 		CybertwinLabel: cybertwinLabel,
+		AnalyseTime:    analyseTime,
+		InvokeTime:     invokeTime,
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {

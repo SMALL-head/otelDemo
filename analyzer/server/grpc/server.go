@@ -13,6 +13,7 @@ import (
 	"otelDemo/utils/httpc"
 	"otelDemo/utils/otelutils"
 	"otelDemo/utils/otelutils/openapi"
+	"strconv"
 	"sync"
 	"time"
 
@@ -115,6 +116,16 @@ func (s *TraceAnalyzerServer) analyse(stopCh <-chan struct{}) {
 					return
 				} else {
 					// todo: 对data进行分析
+					if len(tData.Trace.ResourceSpans) == 0 || len(tData.Trace.ResourceSpans[0].ScopeSpans) == 0 || len(tData.Trace.ResourceSpans[0].ScopeSpans[0].Spans) == 0 {
+						logrus.Warnf("[analyse] - traceId = %s, 没有有效的span数据", traceId)
+						return
+					}
+					startTimeString := tData.Trace.ResourceSpans[0].ScopeSpans[0].Spans[0].StartTimeUnixNano
+					startTimeNano, err := strconv.ParseInt(startTimeString, 10, 64)
+					if err != nil {
+						logrus.Errorf("[analyse] - traceId = %s, startTimeUnixNano解析失败, err = %v", traceId, err)
+						return
+					}
 					patternInfos, err := s.svc.GetAllPattern(context.TODO())
 					patterns := make([]*otelmodel.PatternTree, 0)
 					cybertwinInfo := otelmodel.GetCybertwinInfoFromTraceData(tData)
@@ -138,7 +149,7 @@ func (s *TraceAnalyzerServer) analyse(stopCh <-chan struct{}) {
 						logrus.Errorf("[analyse] - 将tracedata转化为tree失败, err = %v", err)
 						return
 					}
-					match(patterns, tree, cybertwinInfo)
+					match(patterns, tree, cybertwinInfo, startTimeNano)
 				}
 			}()
 		case <-stopCh:
@@ -204,15 +215,16 @@ func NewTraceAnalyzerServer(cfg *config.AnalyzerConfig) *TraceAnalyzerGrpcServer
 	}
 }
 
-func match(patterns []*otelmodel.PatternTree, tree *otelmodel.TraceDataTree, cybertwinLabel string) {
+func match(patterns []*otelmodel.PatternTree, tree *otelmodel.TraceDataTree, cybertwinLabel string, startTimeNano int64) {
 	for _, pattern := range patterns {
 		if otelmodel.MatchPattern(pattern, tree) {
 			// todo: 匹配成功，进行后续处理
 			logrus.Infof("[analyse] - [match] - 匹配成功, traceId = %s, pattern = %s", tree.TraceId, pattern.Root.Value)
 			//res := httpclient.FlareAdmin.HelloClient()
 			//logrus.Info("[analyse] - [match] - 匹配成功, res = ", res)
-			res := httpclient.FlareAdmin.AddMatchResultRecord(pattern.ID, 0, cybertwinLabel)
-			logrus.Infof("[analyse] - [match] - 添加结果, res = %v", res)
+			invokeTime := time.Unix(0, startTimeNano)
+			res := httpclient.FlareAdmin.AddMatchResultRecord(pattern.ID, 0, cybertwinLabel, time.Now(), invokeTime)
+			logrus.Infof("[analyse] - [match] - 添加结果, analyseTime = %s, invokeTime = %s, res = %v", time.Now().String(), invokeTime.String(), res)
 			err := zerotrust.NotifyMicroDanger(cybertwinLabel, fmt.Sprintf(zerotrust.NotifyMsgTemplate, cybertwinLabel))
 			if err != nil {
 				logrus.Errorf("[analyse] - [match] - 通知微服务失败, cybertwinLabel = %s", cybertwinLabel)
