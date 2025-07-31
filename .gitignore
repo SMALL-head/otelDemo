@@ -40,3 +40,5 @@ Thumbs.db
 *.pdb
 
 application.yaml
+
+/k8syaml
