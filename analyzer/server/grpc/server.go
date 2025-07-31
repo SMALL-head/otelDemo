@@ -3,21 +3,23 @@ package grpc
 import (
 	"context"
 	"fmt"
-	"github.com/sirupsen/logrus"
-	tracev1 "go.opentelemetry.io/proto/otlp/collector/trace/v1"
-	"google.golang.org/grpc"
-	_ "google.golang.org/grpc/encoding/gzip"
 	"net"
 	"otelDemo/analyzer/common/otelmodel"
 	"otelDemo/analyzer/config"
 	"otelDemo/analyzer/httpclient"
 	"otelDemo/analyzer/svc"
+	"otelDemo/analyzer/zerotrust"
 	"otelDemo/db/dao"
 	"otelDemo/utils/httpc"
 	"otelDemo/utils/otelutils"
 	"otelDemo/utils/otelutils/openapi"
 	"sync"
 	"time"
+
+	"github.com/sirupsen/logrus"
+	tracev1 "go.opentelemetry.io/proto/otlp/collector/trace/v1"
+	"google.golang.org/grpc"
+	_ "google.golang.org/grpc/encoding/gzip"
 )
 
 type TraceAnalyzerServer struct {
@@ -211,6 +213,10 @@ func match(patterns []*otelmodel.PatternTree, tree *otelmodel.TraceDataTree, cyb
 			//logrus.Info("[analyse] - [match] - 匹配成功, res = ", res)
 			res := httpclient.FlareAdmin.AddMatchResultRecord(pattern.ID, 0, cybertwinLabel)
 			logrus.Infof("[analyse] - [match] - 添加结果, res = %v", res)
+			err := zerotrust.NotifyMicroDanger(cybertwinLabel, fmt.Sprintf(zerotrust.NotifyMsgTemplate, cybertwinLabel))
+			if err != nil {
+				logrus.Errorf("[analyse] - [match] - 通知微服务失败, cybertwinLabel = %s", cybertwinLabel)
+			}
 		}
 	}
 }
