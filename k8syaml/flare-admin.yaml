@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: flare-admin-config
+data:
+  application.yaml: |
+    # Nacos 引导配置
+    nacos:
+      client:
+        namespace: public
+      server:
+        addr: nacos
+        port: 8848
+        scheme: http
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: flare-admin
+  labels:
+    app: flare-admin
+spec:
+  containers:
+    - name: flare-admin
+      image: myregistry.com/library/flare-admin:v3.0.2
+      imagePullPolicy: IfNotPresent
+      ports:
+        - containerPort: 8800
+          protocol: TCP
+      volumeMounts:
+        - name: config-volume
+          mountPath: /app/config/application.yaml
+          subPath: application.yaml
+  volumes:
+    - name: config-volume
+      configMap:
+        name: flare-admin-config
+  restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flare-admin
+spec:
+  selector:
+    app: flare-admin
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8800
+  type: ClusterIP
+

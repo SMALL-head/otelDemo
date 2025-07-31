@@ -11,6 +11,10 @@ data:
       reverseSh:
         host: kt-grpc.kernel-trace.svc.cluster.local
         port: 50051
+    client:
+      flareAdmin:
+        host: flare-admin
+        port: 80
 ---
 apiVersion: apps/v1
 kind: DaemonSet
@@ -27,7 +31,7 @@ spec:
     spec:
       containers:
         - name: flare-core
-          image: myregistry.com/library/flare:v3
+          image: myregistry.com/library/flare:v3.0.1
           securityContext:
             privileged: true
           ports:

@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: nacos
+  labels:
+    app: nacos
+spec:
+  serviceName: nacos
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nacos
+  template:
+    metadata:
+      labels:
+        app: nacos
+    spec:
+      containers:
+        - name: nacos
+          image: nacos/nacos-server:latest
+          ports:
+            - containerPort: 8080
+            - containerPort: 8848
+            - containerPort: 9848
+          env:
+            - name: MODE
+              value: "standalone"
+            - name: PREFER_HOST_MODE
+              value: "hostname"
+            - name: NACOS_AUTH_ENABLE
+              value: "true"
+            - name: NACOS_AUTH_TOKEN
+              value: "Y292NEVnUnBRNVdlQUNYMElYMTVXUzBYSHhQekE1YmpoQmxlbjZCV0RWZ2NpbUxvUWNZWlQyWGliTGl6cEpDWQ=="
+            - name: NACOS_AUTH_IDENTITY_KEY
+              value: "nacos_auth_identity_key_for_cic"
+            - name: NACOS_AUTH_IDENTITY_VALUE
+              value: "sssssssssssddddddddddddddffffffffsdfasdfasdf"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nacos
+spec:
+  type: NodePort
+  selector:
+    app: nacos
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      nodePort: 30090
+    - name: data-transport
+      port: 8848
+      targetPort: 8848
+      nodePort: 30091 
+  
+# 密码：FPbXdcChry

