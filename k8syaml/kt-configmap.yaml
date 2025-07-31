@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: kernel-trace
-  namespace: kernel-trace
-data:
-  namespaces: |
-    kt-app
-    reversesh
