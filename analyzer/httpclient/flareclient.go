@@ -29,18 +29,19 @@ func (c *FlareAdminClient) HelloClient() string {
 
 func (c *FlareAdminClient) AddMatchResultRecord(patternID int, cybertwinID int, cybertwinLabel string, analyseTime time.Time, invokeTime time.Time) string {
 	req := struct {
-		PatternID      int       `json:"pattern_id"`
-		CybertwinID    int       `json:"cybertwin_id"`
-		CybertwinLabel string    `json:"cybertwin_label"`
-		AnalyseTime    time.Time `json:"analyse_time"`
-		InvokeTime     time.Time `json:"invoke_time"`
+		PatternID      int    `json:"pattern_id"`
+		CybertwinID    int    `json:"cybertwin_id"`
+		CybertwinLabel string `json:"cybertwin_label"`
+		AnalyseTime    string `json:"analyse_time"`
+		InvokeTime     string `json:"invoke_time"`
 	}{
 		PatternID:      patternID,
 		CybertwinID:    cybertwinID,
 		CybertwinLabel: cybertwinLabel,
-		AnalyseTime:    analyseTime,
-		InvokeTime:     invokeTime,
+		AnalyseTime:    fmt.Sprintf("%d", analyseTime.UnixNano()),
+		InvokeTime:     fmt.Sprintf("%d", invokeTime.UnixNano()),
 	}
+
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
 		logrus.Errorf("[AddMatchResultRecord] - [json.Marshal] - failed to marshal json: %v", err)
